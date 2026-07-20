@@ -8,15 +8,10 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     server: {
       proxy: {
-        "/character-api": {
-          target: env.VITE_CHARACTER_API_URL || "http://127.0.0.1:8000",
+        "/bff": {
+          target: env.VITE_BFF_URL || "http://127.0.0.1:3000",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/character-api/, ""),
-        },
-        "/lm-studio": {
-          target: env.VITE_LM_STUDIO_URL || "http://127.0.0.1:1234",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/lm-studio/, ""),
+          rewrite: (path) => path.replace(/^\/bff/, ""),
         },
       },
     },

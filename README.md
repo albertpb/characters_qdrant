@@ -86,6 +86,22 @@ as LM Studio. Start the API first, then configure the client to run:
 Set `CHARDB_CHARACTER_API_URL` in `.env` when the API does not run at
 `http://127.0.0.1:8000`.
 
+### BFF
+
+The NestJS BFF orchestrates image search and LM Studio chat requests so the
+frontend communicates with only one service.
+
+```bash
+cd bff
+npm install
+```
+
+Copy `bff/.env.example` to `bff/.env`, then run:
+
+```bash
+npm run start:dev
+```
+
 ### Frontend
 
 ```bash
@@ -99,10 +115,10 @@ npm install
 npm run dev
 ```
 
-The chat frontend uploads attached images to the character image-search API,
-passes the returned character metadata to LM Studio's OpenAI-compatible chat
-endpoint, and renders the response. Copy `frontend/.env.example` to
-`frontend/.env` to change the Character API, LM Studio URL, or model name.
+The chat frontend sends the prompt and optional image to the NestJS BFF, which
+searches the character API, adds matching metadata to the chat context, calls
+LM Studio, and returns the response. Copy `frontend/.env.example` to
+`frontend/.env` to change the BFF URL.
 
 ## Goals
 

@@ -1,5 +1,4 @@
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
-import { system_prompt } from "./consts";
 
 type CharacterResult = {
   image_id: string;
@@ -13,18 +12,6 @@ type Message = {
   imageUrl?: string;
   matches?: CharacterResult[];
 };
-
-const lmStudioModel = import.meta.env.VITE_LM_STUDIO_MODEL || "local-model";
-
-function characterContext(matches: CharacterResult[]) {
-  if (!matches.length) return "No matching character was found in the local character index.";
-  return matches
-    .map((match, index) => {
-      const payload = match.payload;
-      return `${index + 1}. ${String(payload.name ?? "Unknown")} (similarity ${match.score.toFixed(3)}): ${JSON.stringify(payload)}`;
-    })
-    .join("\n");
-}
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([
@@ -59,44 +46,19 @@ export function App() {
     setPrompt("");
 
     try {
-      let matches: CharacterResult[] = [];
-      if (image) {
-        const form = new FormData();
-        form.append("image", image);
-        form.append("limit", "5");
-        const searchResponse = await fetch("/character-api/api/v1/characters/search/image", {
-          method: "POST",
-          body: form,
-        });
-        if (!searchResponse.ok) throw new Error((await searchResponse.json()).detail || "Character image search failed.");
-        matches = (await searchResponse.json()).results as CharacterResult[];
-      }
-
-      setLoadingStage("Generating response...");
-      const completionResponse = await fetch("/lm-studio/v1/chat/completions", {
+      const form = new FormData();
+      form.append("prompt", userMessage.content);
+      form.append("messages", JSON.stringify(messages.map(({ role, content }) => ({ role, content }))));
+      if (image) form.append("image", image);
+      const completionResponse = await fetch("/bff/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: lmStudioModel,
-          temperature: 0.5,
-          messages: [
-            {
-              role: "system",
-              content: system_prompt,
-            },
-            ...messages.map(({ role, content }) => ({ role, content })),
-            {
-              role: "user",
-              content: `${userMessage.content}\n\nLocal character image-search context:\n${characterContext(matches)}`,
-            },
-          ],
-        }),
+        body: form,
       });
-      if (!completionResponse.ok) throw new Error((await completionResponse.json()).error?.message || "LM Studio chat request failed.");
+      if (!completionResponse.ok) throw new Error((await completionResponse.json()).message || "Chat request failed.");
       const completion = await completionResponse.json();
-      const answer = completion.choices?.[0]?.message?.content;
+      const answer = completion.answer;
       if (!answer) throw new Error("LM Studio returned no chat response.");
-      setMessages((current) => [...current, { role: "assistant", content: answer, matches }]);
+      setMessages((current) => [...current, { role: "assistant", content: answer, matches: completion.matches }]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The request failed.");
     } finally {
