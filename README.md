@@ -69,6 +69,11 @@ For CUDA 13.0 image embedding support, install PyTorch first:
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 ```
 
+Run it with
+```bash
+python.exe -m uvicorn app.main:app --app-dir backend --reload
+```
+
 ### MCP Server
 
 The stdio MCP server exposes `search_character_by_image` for MCP clients such
@@ -87,7 +92,17 @@ Set `CHARDB_CHARACTER_API_URL` in `.env` when the API does not run at
 cd frontend
 ```
 
-Install dependencies and run the development server.
+Install dependencies and run the development server:
+
+```bash
+npm install
+npm run dev
+```
+
+The chat frontend uploads attached images to the character image-search API,
+passes the returned character metadata to LM Studio's OpenAI-compatible chat
+endpoint, and renders the response. Copy `frontend/.env.example` to
+`frontend/.env` to change the Character API, LM Studio URL, or model name.
 
 ## Goals
 
