@@ -1,4 +1,5 @@
 from typing import Annotated
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,3 +33,13 @@ class CharacterCreate(CharacterMetadata):
 class CharacterCreateResponse(BaseModel):
     character_id: UUID
     image_ids: list[UUID]
+
+
+class ImageSearchResult(BaseModel):
+    image_id: UUID
+    score: float
+    payload: dict[str, Any]
+
+
+class ImageSearchResponse(BaseModel):
+    results: list[ImageSearchResult]

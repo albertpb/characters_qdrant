@@ -1,11 +1,18 @@
+import base64
+import binascii
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from qdrant_client import models
 
 from app.core.config import get_settings
-from app.models.character import CharacterCreate, CharacterCreateResponse
+from app.models.character import (
+    CharacterCreate,
+    CharacterCreateResponse,
+    ImageSearchResponse,
+    ImageSearchResult,
+)
 from app.services.embeddings import ImageEmbeddingError, get_image_embedder
 from app.services.qdrant import get_qdrant_client
 from app.services.storage import remove_character_images, store_image
@@ -88,3 +95,90 @@ async def create_character(
         ) from exc
 
     return CharacterCreateResponse(character_id=character_id, image_ids=image_ids)
+
+
+@router.post("/search/image")
+async def search_by_image(request: Request) -> ImageSearchResponse:
+    """Find character images from a multipart upload or base64 JSON payload."""
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("multipart/form-data"):
+        form = await request.form()
+        image = form.get("image")
+        limit_value = form.get("limit", 10)
+        if not isinstance(image, UploadFile):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="The multipart request must include an image file in the image field.",
+            )
+        if not image.content_type or not image.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="The uploaded file must have an image content type.",
+            )
+        content = await image.read()
+    elif content_type.startswith("application/json"):
+        try:
+            body = await request.json()
+            encoded_image = body["image_base64"]
+            if not isinstance(encoded_image, str):
+                raise ValueError("image_base64 must be a string")
+            if encoded_image.startswith("data:"):
+                encoded_image = encoded_image.split(",", maxsplit=1)[1]
+            content = base64.b64decode(encoded_image, validate=True)
+            limit_value = body.get("limit", 10)
+        except (KeyError, ValueError, binascii.Error, IndexError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="JSON requests require a valid base64 image_base64 field.",
+            ) from exc
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Use multipart/form-data or application/json.",
+        )
+
+    try:
+        limit = int(limit_value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="limit must be an integer from 1 to 100.",
+        ) from exc
+    if not 1 <= limit <= 100:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="limit must be an integer from 1 to 100.",
+        )
+
+    try:
+        embedding = get_image_embedder().embed_image(content)
+        settings = get_settings()
+        results = get_qdrant_client().query_points(
+            collection_name=settings.qdrant_collection,
+            query=embedding,
+            using="image",
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        ).points
+    except ImageEmbeddingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Unable to search Qdrant: {exc}",
+        ) from exc
+
+    return ImageSearchResponse(
+        results=[
+            ImageSearchResult(
+                image_id=point.id,
+                score=point.score,
+                payload=point.payload or {},
+            )
+            for point in results
+        ]
+    )
