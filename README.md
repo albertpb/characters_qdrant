@@ -69,6 +69,18 @@ For CUDA 13.0 image embedding support, install PyTorch first:
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 ```
 
+### MCP Server
+
+The stdio MCP server exposes `search_character_by_image` for MCP clients such
+as LM Studio. Start the API first, then configure the client to run:
+
+```bash
+.venv\Scripts\python.exe -m mcp_server.server
+```
+
+Set `CHARDB_CHARACTER_API_URL` in `.env` when the API does not run at
+`http://127.0.0.1:8000`.
+
 ### Frontend
 
 ```bash

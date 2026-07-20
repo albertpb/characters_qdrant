@@ -105,7 +105,7 @@ async def search_by_image(request: Request) -> ImageSearchResponse:
         form = await request.form()
         image = form.get("image")
         limit_value = form.get("limit", 10)
-        if not isinstance(image, UploadFile):
+        if not hasattr(image, "read") or not hasattr(image, "content_type"):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="The multipart request must include an image file in the image field.",
