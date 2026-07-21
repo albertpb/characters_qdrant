@@ -102,6 +102,10 @@ Copy `bff/.env.example` to `bff/.env`, then run:
 npm run start:dev
 ```
 
+The BFF persists multiple conversations and messages in SQLite. By default the
+database is created at `bff/data/chat-history.sqlite`; configure
+`CHAT_DATABASE_PATH` in `bff/.env` to use a different location.
+
 ### Frontend
 
 ```bash

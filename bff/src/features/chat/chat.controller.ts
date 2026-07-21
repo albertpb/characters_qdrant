@@ -7,7 +7,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { ChatRequestDto, type ChatMessage } from "./chat.dto";
+import { ChatRequestDto, RegenerateRequestDto } from "./chat.dto";
 import { ChatService } from "./chat.service";
 import type { UploadFile } from "./upload-file";
 
@@ -21,18 +21,15 @@ export class ChatController {
     @Body() body: ChatRequestDto,
     @UploadedFile() image?: unknown,
   ) {
-    let messages: ChatMessage[] = [];
-    if (body.messages) {
-      try {
-        messages = JSON.parse(body.messages) as ChatMessage[];
-      } catch {
-        throw new BadRequestException("messages must be a valid JSON array.");
-      }
-    }
     return this.chatService.chat({
+      conversationId: body.conversationId,
       prompt: body.prompt,
-      messages,
       image: image as UploadFile | undefined,
     });
+  }
+
+  @Post("regenerate")
+  regenerate(@Body() body: RegenerateRequestDto) {
+    return this.chatService.regenerate(body.conversationId);
   }
 }

@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString } from "class-validator";
+import { IsIn, IsString } from "class-validator";
 
 export class ChatMessageDto {
   @IsIn(["user", "assistant"])
@@ -10,11 +10,16 @@ export class ChatMessageDto {
 
 export class ChatRequestDto {
   @IsString()
+  conversationId!: string;
+
+  @IsString()
   prompt!: string;
 
-  @IsOptional()
+}
+
+export class RegenerateRequestDto {
   @IsString()
-  messages?: string;
+  conversationId!: string;
 }
 
 export type ChatMessage = Pick<ChatMessageDto, "role" | "content">;
